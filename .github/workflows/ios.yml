@@ -10,29 +10,24 @@ jobs:
     - uses: subosito/flutter-action@v2
       with:
         flutter-version: '3.32.7'
-    - name: Clean Flutter Build
-      run: flutter clean
+    - run: flutter clean
     - name: Install CocoaPods
       run: sudo gem install cocoapods
     - name: Accept Xcode License
       run: sudo xcodebuild -license accept
     - run: flutter pub get
     - run: cd ios && pod install --repo-update --verbose && cd ..
-    - name: Disable Signing and Capabilities
+    - name: Disable Signing in Xcode
       run: |
         PBXPROJ=ios/Runner.xcodeproj/project.pbxproj
-        sed -i '' -e '/DEVELOPMENT_TEAM/d' -e '/CODE_SIGN_IDENTITY/d' -e '/PROVISIONING_PROFILE/d' -e '/CODE_SIGN_STYLE/d' -e '/Push Notifications/d' $PBXPROJ
-        echo "CODE_SIGN_STYLE = Manual;" >> $PBXPROJ
-        echo "CODE_SIGN_IDENTITY = \"\";" >> $PBXPROJ
-        echo "PROVISIONING_PROFILE_SPECIFIER = \"\";" >> $PBXPROJ
-        echo "DEVELOPMENT_TEAM = \"\";" >> $PBXPROJ
-    - name: Build with xcodebuild
-      run: |
-        cd ios
-        xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Release -destination 'generic/platform=iOS' build CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+        sed -i '' -E 's/(DEVELOPMENT_TEAM = ).*/\1"";/g' $PBXPROJ
+        sed -i '' -E 's/(CODE_SIGN_IDENTITY = ).*/\1"";/g' $PBXPROJ
+        sed -i '' -E 's/(PROVISIONING_PROFILE_SPECIFIER = ).*/\1"";/g' $PBXPROJ
+        sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' $PBXPROJ
+    - run: flutter build ios --release --no-codesign --verbose
     - name: Zip IPA
       run: |
-        cd ../build/ios/iphoneos
+        cd build/ios/iphoneos
         mkdir Payload
         mv Runner.app Payload/
         zip -r hello_world.ipa Payload
